@@ -128,6 +128,80 @@ export default function Home() {
               {searching ? 'Searching...' : 'Search'}
             </button>
           </div>
+
+          {/* Help Section */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <h3 className="font-semibold text-blue-900 mb-3">How to find paper information:</h3>
+
+            {/* What is DOI */}
+            <div className="mb-4">
+              <p className="text-sm text-blue-800 mb-2">
+                <strong>What is a DOI?</strong> A DOI (Digital Object Identifier) is a unique code for any paper.
+                Look for it on the paper&apos;s first page, usually near the title or in the footer. It looks like: <code className="bg-blue-100 px-1 rounded">10.xxxx/xxxxx</code>
+              </p>
+            </div>
+
+            {/* Examples */}
+            <div className="grid md:grid-cols-2 gap-4 text-sm">
+              {/* DOI Examples */}
+              <div>
+                <p className="font-medium text-blue-900 mb-2">DOI Examples:</p>
+                <ul className="space-y-1 text-blue-700">
+                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1056/NEJMoa2302392')}>
+                    <code className="bg-white px-1 rounded">10.1056/NEJMoa2302392</code>
+                  </li>
+                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1016/S0140-6736(23)00806-1')}>
+                    <code className="bg-white px-1 rounded">10.1016/S0140-6736(23)00806-1</code>
+                  </li>
+                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1001/jama.2023.4900')}>
+                    <code className="bg-white px-1 rounded">10.1001/jama.2023.4900</code>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Title Examples */}
+              <div>
+                <p className="font-medium text-blue-900 mb-2">Paper Title Examples:</p>
+                <ul className="space-y-1 text-blue-700 text-xs">
+                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('Semaglutide and Cardiovascular Outcomes in Obesity')}>
+                    Semaglutide and Cardiovascular Outcomes in Obesity
+                  </li>
+                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('GLP-1 agonists in type 2 diabetes')}>
+                    GLP-1 agonists in type 2 diabetes
+                  </li>
+                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('Effect of SGLT2 inhibitors on heart failure')}>
+                    Effect of SGLT2 inhibitors on heart failure
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Publisher URLs */}
+            <div className="mt-4">
+              <p className="font-medium text-blue-900 mb-2">Open Access Paper URLs (click to try):</p>
+              <ul className="space-y-1 text-xs text-blue-700">
+                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://www.japi.org/article/view/2340')}>
+                  <span className="font-medium">JAPI:</span> https://www.japi.org/article/view/2340
+                </li>
+                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10234567/')}>
+                  <span className="font-medium">PubMed Central:</span> https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10234567/
+                </li>
+                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://www.mdpi.com/2077-0383/12/5/1234')}>
+                  <span className="font-medium">MDPI:</span> https://www.mdpi.com/2077-0383/12/5/1234
+                </li>
+                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-023-02900-1')}>
+                  <span className="font-medium">BMC:</span> https://bmcmedicine.biomedcentral.com/articles/...
+                </li>
+                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1004000')}>
+                  <span className="font-medium">PLOS:</span> https://journals.plos.org/plosmedicine/article?...
+                </li>
+              </ul>
+            </div>
+
+            <p className="text-xs text-blue-600 mt-3 italic">
+              Tip: Click any example above to auto-fill and try it!
+            </p>
+          </div>
         </div>
 
         {/* Error Message */}
