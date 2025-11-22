@@ -256,14 +256,17 @@ export default function Home() {
                   <p className="text-white text-sm font-medium leading-tight">{paperMetadata.title}</p>
                 </div>
                 <div className="flex gap-4 text-xs">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-slate-500 text-[10px] uppercase tracking-wider">Authors</p>
-                    <p className="text-slate-300 truncate">{paperMetadata.authors}</p>
+                    <p className="text-slate-300 truncate">
+                      {paperMetadata.authors.split(',').slice(0, 2).join(', ')}
+                      {paperMetadata.authors.split(',').length > 2 && ' et al.'}
+                    </p>
                   </div>
                   {paperMetadata.doi && (
-                    <div>
+                    <div className="flex-shrink-0 max-w-[180px]">
                       <p className="text-slate-500 text-[10px] uppercase tracking-wider">DOI</p>
-                      <p className="text-teal-400 mono">{paperMetadata.doi}</p>
+                      <p className="text-teal-400 mono text-[11px] truncate">{paperMetadata.doi}</p>
                     </div>
                   )}
                 </div>
