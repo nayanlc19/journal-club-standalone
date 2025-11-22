@@ -1,20 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs/promises';
-import path from 'path';
+import Groq from 'groq-sdk';
 
-const execAsync = promisify(exec);
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
-// Check if input is a DOI or URL
-function parseInput(input: string): { type: 'doi' | 'url'; value: string } {
-  if (input.match(/^10\.\d{4,}/)) {
-    return { type: 'doi', value: input };
+// Fetch paper text from CrossRef or publisher
+async function fetchPaperAbstract(doi: string): Promise<{ title: string; abstract: string; authors: string[] }> {
+  try {
+    const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+    if (!res.ok) throw new Error('CrossRef lookup failed');
+
+    const data = await res.json();
+    const work = data.message;
+
+    return {
+      title: work.title?.[0] || 'Unknown Title',
+      abstract: work.abstract || 'No abstract available',
+      authors: work.author?.map((a: any) => `${a.given || ''} ${a.family || ''}`).slice(0, 5) || [],
+    };
+  } catch (error) {
+    console.error('[Generate] CrossRef fetch failed:', error);
+    throw error;
   }
-  if (input.startsWith('http://') || input.startsWith('https://')) {
-    return { type: 'url', value: input };
-  }
-  return { type: 'doi', value: input };
+}
+
+// Generate critical appraisal using Groq
+async function generateAppraisal(paper: { title: string; abstract: string; authors: string[] }): Promise<string> {
+  const prompt = `You are an expert medical researcher. Generate a comprehensive journal club critical appraisal for this research paper.
+
+**Paper Title:** ${paper.title}
+
+**Authors:** ${paper.authors.join(', ')}
+
+**Abstract:** ${paper.abstract}
+
+Generate a structured critical appraisal with these sections:
+1. **Study Overview** - Brief summary of the study
+2. **PICO Framework** - Population, Intervention, Comparison, Outcome
+3. **Study Design** - Type of study and methodology
+4. **Key Findings** - Main results and statistics
+5. **Strengths** - What the study did well
+6. **Limitations** - Weaknesses and biases
+7. **Clinical Implications** - How this applies to practice
+8. **Questions for Discussion** - 3-5 thought-provoking questions
+
+Format as clean markdown for presentation slides.`;
+
+  const completion = await groq.chat.completions.create({
+    messages: [{ role: 'user', content: prompt }],
+    model: 'llama-3.1-70b-versatile',
+    max_tokens: 4000,
+    temperature: 0.3,
+  });
+
+  return completion.choices[0]?.message?.content || 'Generation failed';
 }
 
 export async function POST(request: NextRequest) {
@@ -26,53 +66,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Input is required' }, { status: 400 });
     }
 
-    const parsed = parseInput(input.trim());
+    // Check if DOI
+    const isDoi = input.match(/^10\.\d{4,}/);
 
-    // Create output directory
-    const outputDir = path.join(process.cwd(), 'output', Date.now().toString());
-    await fs.mkdir(outputDir, { recursive: true });
-
-    // Build the command to run the CLI from Journal_Club_V2
-    // In production, this would be integrated directly, but for now we call the CLI
-    const journalClubPath = process.env.JOURNAL_CLUB_PATH || 'D:\\Claude\\Projects\\Journal_Club_V2';
-
-    const command = parsed.type === 'doi'
-      ? `cd "${journalClubPath}" && npm run generate-full -- --doi "${parsed.value}" --output "${outputDir}"`
-      : `cd "${journalClubPath}" && npm run generate-full -- --url "${parsed.value}" --output "${outputDir}"`;
-
-    console.log('Running command:', command);
-
-    const { stdout, stderr } = await execAsync(command, {
-      timeout: 120000, // 2 minute timeout
-      maxBuffer: 50 * 1024 * 1024,
-    });
-
-    console.log('stdout:', stdout);
-    if (stderr) console.log('stderr:', stderr);
-
-    // Find generated files
-    const files = await fs.readdir(outputDir);
-    const gammaFile = files.find(f => f.endsWith('_Gamma.md'));
-    const educationalFile = files.find(f => f.endsWith('_Educational.docx'));
-
-    if (!gammaFile) {
+    if (!isDoi) {
       return NextResponse.json({
         success: false,
-        error: 'Generation failed - no output files created'
-      }, { status: 500 });
+        error: 'Currently only DOI input is supported. Please enter a DOI like 10.1056/NEJMoa2302392'
+      }, { status: 400 });
     }
 
-    // Read gamma markdown
-    const gammaMarkdown = await fs.readFile(path.join(outputDir, gammaFile), 'utf-8');
+    console.log(`[Generate] Starting for DOI: ${input}`);
+
+    // Fetch paper metadata
+    const paper = await fetchPaperAbstract(input.trim());
+    console.log(`[Generate] Fetched paper: ${paper.title}`);
+
+    // Generate appraisal
+    const gammaMarkdown = await generateAppraisal(paper);
+    console.log(`[Generate] Generated ${gammaMarkdown.length} chars of markdown`);
 
     return NextResponse.json({
       success: true,
       gammaMarkdown,
-      educationalDocPath: educationalFile ? path.join(outputDir, educationalFile) : null,
-      outputDir,
+      educationalDocPath: null, // Word doc generation not yet implemented
     });
+
   } catch (error: unknown) {
-    console.error('Generate error:', error);
+    console.error('[Generate] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Generation failed';
     return NextResponse.json({
       success: false,
@@ -81,4 +102,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export const maxDuration = 120; // Allow up to 2 minutes for generation
+export const maxDuration = 60;
