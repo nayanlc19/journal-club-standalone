@@ -235,7 +235,74 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Divider */}
+          {/* Paper Found - RIGHT HERE after search */}
+          {paperMetadata && !result && (
+            <div className="mb-5 p-4 bg-green-500/10 border border-green-500/30 rounded-xl animate-fade-in">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-white">Paper Found</h2>
+                  <p className="text-slate-500 text-xs">{paperMetadata.sourceType}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-4 p-3 bg-slate-900/50 rounded-lg">
+                <div>
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider">Title</p>
+                  <p className="text-white text-sm font-medium leading-tight">{paperMetadata.title}</p>
+                </div>
+                <div className="flex gap-4 text-xs">
+                  <div className="flex-1">
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider">Authors</p>
+                    <p className="text-slate-300 truncate">{paperMetadata.authors}</p>
+                  </div>
+                  {paperMetadata.doi && (
+                    <div>
+                      <p className="text-slate-500 text-[10px] uppercase tracking-wider">DOI</p>
+                      <p className="text-teal-400 mono">{paperMetadata.doi}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="w-full py-3 btn-warm rounded-xl text-sm disabled:cursor-not-allowed"
+              >
+                {generating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {progress}
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Generate Documents
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => { setInput(''); setPaperMetadata(null); }}
+                className="w-full mt-2 text-xs text-slate-500 hover:text-slate-400 transition-colors"
+              >
+                Search different paper
+              </button>
+            </div>
+          )}
+
+          {/* Divider - hide when paper found */}
+          {!paperMetadata && (
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-700"></div>
@@ -244,8 +311,10 @@ export default function Home() {
               <span className="px-4 bg-slate-800/50 text-slate-500 text-sm">or upload directly</span>
             </div>
           </div>
+          )}
 
-          {/* PDF Upload Zone */}
+          {/* PDF Upload Zone - hide when paper found */}
+          {!paperMetadata && (
           <div className="mb-4">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-2">
               <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,6 +383,7 @@ export default function Home() {
               )}
             </div>
           </div>
+          )}
 
           {/* Help Section - hide when paper found */}
           {!paperMetadata && (
@@ -414,65 +484,6 @@ export default function Home() {
               </p>
             </div>
           </details>
-          )}
-
-          {/* Paper Preview - Inside same card */}
-          {paperMetadata && !result && (
-            <div className="mt-4 pt-4 border-t border-slate-700/50 animate-fade-in">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Paper Found</h2>
-                  <p className="text-slate-500 text-sm">{paperMetadata.sourceType}</p>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-5 p-3 bg-slate-800/50 rounded-xl">
-                <div>
-                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Title</p>
-                  <p className="text-white font-medium text-sm">{paperMetadata.title}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Authors</p>
-                    <p className="text-slate-300 text-xs">{paperMetadata.authors}</p>
-                  </div>
-                  {paperMetadata.doi && (
-                    <div>
-                      <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">DOI</p>
-                      <p className="text-teal-400 text-xs mono">{paperMetadata.doi}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={handleGenerate}
-                disabled={generating}
-                className="w-full py-3.5 btn-warm rounded-xl text-sm disabled:cursor-not-allowed"
-              >
-                {generating ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    {progress}
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    Generate Documents
-                  </span>
-                )}
-              </button>
-            </div>
           )}
         </div>
 
