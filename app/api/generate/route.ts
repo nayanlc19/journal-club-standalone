@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 
 // Lazy init to avoid build-time errors
 let groq: Groq | null = null;
@@ -8,6 +10,22 @@ function getGroq() {
     groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   }
   return groq;
+}
+
+// Extract text from PDF using pdf-parse
+async function extractPdfText(filePath: string): Promise<string> {
+  if (!existsSync(filePath)) {
+    throw new Error('PDF file not found');
+  }
+
+  const pdfBuffer = await readFile(filePath);
+  const { PDFParse } = await import('pdf-parse');
+  const parser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
+  const textResult = await parser.getText();
+
+  const fullText = textResult.pages.map(p => p.text).join('\n\n');
+  console.log(`[PDF] Extracted ${fullText.length} chars from ${textResult.pages.length} pages`);
+  return fullText;
 }
 
 // Fetch paper from CrossRef
@@ -26,14 +44,16 @@ async function fetchPaperAbstract(doi: string): Promise<{ title: string; abstrac
 }
 
 // Generate critical appraisal using Groq
-async function generateAppraisal(paper: { title: string; abstract: string; authors: string[] }): Promise<string> {
+async function generateAppraisal(paper: { title: string; content: string; authors: string[]; isFullText: boolean }): Promise<string> {
+  const contentType = paper.isFullText ? 'Full Paper Text' : 'Abstract';
+
   const prompt = `You are an expert medical researcher. Generate a comprehensive journal club critical appraisal for this research paper.
 
 **Paper Title:** ${paper.title}
 
 **Authors:** ${paper.authors.join(', ')}
 
-**Abstract:** ${paper.abstract}
+**${contentType}:** ${paper.content}
 
 Generate a structured critical appraisal with these sections:
 1. **Clinical Question (PICO)** - Population, Intervention, Comparison, Outcome
@@ -131,31 +151,60 @@ async function createGammaPresentation(markdown: string, title: string): Promise
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { input } = body;
+    const { input, isPdfUpload } = body;
 
     if (!input) {
       return NextResponse.json({ success: false, error: 'Input is required' }, { status: 400 });
     }
 
-    const isDoi = input.match(/^10\.\d{4,}/);
-    if (!isDoi) {
-      return NextResponse.json({
-        success: false,
-        error: 'Currently only DOI input is supported. Enter a DOI like 10.1056/NEJMoa2302392'
-      }, { status: 400 });
+    let paper: { title: string; content: string; authors: string[]; isFullText: boolean };
+
+    if (isPdfUpload) {
+      // Handle uploaded PDF
+      console.log(`[Generate] Processing uploaded PDF: ${input}`);
+
+      const pdfText = await extractPdfText(input);
+
+      // Extract title from first line (often the title) or use filename
+      const lines = pdfText.split('\n').filter(l => l.trim());
+      const title = lines[0]?.substring(0, 200) || 'Uploaded Paper';
+
+      paper = {
+        title,
+        content: pdfText.substring(0, 30000), // Limit to ~30k chars for API
+        authors: ['From uploaded PDF'],
+        isFullText: true,
+      };
+
+      console.log(`[Generate] Extracted ${pdfText.length} chars from PDF`);
+    } else {
+      // Handle DOI
+      const isDoi = input.match(/^10\.\d{4,}/);
+      if (!isDoi) {
+        return NextResponse.json({
+          success: false,
+          error: 'Currently only DOI input is supported. Enter a DOI like 10.1056/NEJMoa2302392'
+        }, { status: 400 });
+      }
+
+      console.log(`[Generate] Starting for DOI: ${input}`);
+
+      const crossRefData = await fetchPaperAbstract(input.trim());
+      paper = {
+        title: crossRefData.title,
+        content: crossRefData.abstract,
+        authors: crossRefData.authors,
+        isFullText: false,
+      };
+
+      console.log(`[Generate] Fetched: ${paper.title}`);
     }
 
-    console.log(`[Generate] Starting for DOI: ${input}`);
-
-    // Step 1: Fetch paper metadata
-    const paper = await fetchPaperAbstract(input.trim());
-    console.log(`[Generate] Fetched: ${paper.title}`);
-
-    // Step 2: Generate critical appraisal
+    // Generate critical appraisal
     const gammaMarkdown = await generateAppraisal(paper);
     console.log(`[Generate] Generated ${gammaMarkdown.length} chars`);
 
-    // Step 3: Create Gamma presentation (if API key available)
+    // Create Gamma presentation (if API key available)
     const gammaResult = await createGammaPresentation(gammaMarkdown, paper.title);
 
     return NextResponse.json({
