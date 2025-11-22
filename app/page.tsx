@@ -316,37 +316,101 @@ export default function Home() {
           </div>
 
           {/* Help Section */}
-          <details className="mt-4">
+          <details className="mt-4" open>
             <summary className="cursor-pointer text-sm font-medium text-teal-400 hover:text-teal-300 transition-colors flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Need examples? Click here
+              How to find paper information (click examples to use)
             </summary>
-            <div className="mt-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-              <p className="text-slate-400 text-sm mb-3">
-                <strong className="text-slate-300">DOI</strong> = Digital Object Identifier. Find it on the paper&apos;s first page: <code className="mono text-teal-400 bg-slate-900/50 px-1.5 py-0.5 rounded">10.xxxx/xxxxx</code>
-              </p>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div className="mt-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 space-y-4">
+              {/* What is DOI */}
+              <div className="p-3 bg-teal-500/10 rounded-lg border border-teal-500/20">
+                <p className="text-slate-300 text-sm">
+                  <strong className="text-teal-400">What is a DOI?</strong> A DOI (Digital Object Identifier) is a unique code for any paper.
+                  Look for it on the paper&apos;s first page, usually near the title or in the footer.
+                  It looks like: <code className="mono text-teal-400 bg-slate-900/50 px-1.5 py-0.5 rounded">10.xxxx/xxxxx</code>
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* DOI Examples */}
                 <div>
-                  <p className="text-slate-300 font-medium mb-2">DOI Examples:</p>
+                  <p className="text-slate-300 font-medium mb-2 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-teal-400"></span>
+                    DOI Examples
+                  </p>
                   <div className="space-y-1">
-                    {['10.1056/NEJMoa2302392', '10.1016/S0140-6736(23)00806-1', '10.1001/jama.2023.4900'].map((doi) => (
+                    {[
+                      { doi: '10.1056/NEJMoa2302392', label: 'NEJM' },
+                      { doi: '10.1016/S0140-6736(23)00806-1', label: 'Lancet' },
+                      { doi: '10.1001/jama.2023.4900', label: 'JAMA' }
+                    ].map((item) => (
                       <button
-                        key={doi}
-                        onClick={() => setInput(doi)}
-                        className="block w-full text-left px-2 py-1 rounded bg-slate-900/50 text-teal-400 hover:bg-teal-500/10 transition-colors mono text-xs"
+                        key={item.doi}
+                        onClick={() => setInput(item.doi)}
+                        className="block w-full text-left px-3 py-2 rounded-lg bg-slate-900/50 text-teal-400 hover:bg-teal-500/10 transition-colors mono text-xs border border-slate-700/50 hover:border-teal-500/30"
                       >
-                        {doi}
+                        <span className="text-slate-500 text-[10px] block">{item.label}</span>
+                        {item.doi}
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Paper Title Examples */}
                 <div>
-                  <p className="text-slate-300 font-medium mb-2">Supported Sources:</p>
-                  <p className="text-slate-500 text-xs">JAPI, PubMed Central, MDPI, BMC, PLOS, and any DOI</p>
+                  <p className="text-slate-300 font-medium mb-2 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-400"></span>
+                    Search by Paper Title
+                  </p>
+                  <div className="space-y-1">
+                    {[
+                      'Semaglutide and Cardiovascular Outcomes in Obesity',
+                      'GLP-1 agonists in type 2 diabetes',
+                      'Effect of SGLT2 inhibitors on heart failure'
+                    ].map((title) => (
+                      <button
+                        key={title}
+                        onClick={() => setInput(title)}
+                        className="block w-full text-left px-3 py-2 rounded-lg bg-slate-900/50 text-orange-400 hover:bg-orange-500/10 transition-colors text-xs border border-slate-700/50 hover:border-orange-500/30"
+                      >
+                        {title}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+
+              {/* Open Access URLs */}
+              <div>
+                <p className="text-slate-300 font-medium mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                  Open Access Paper URLs (full text available)
+                </p>
+                <div className="grid md:grid-cols-2 gap-2">
+                  {[
+                    { name: 'JAPI', url: 'https://www.japi.org/article/view/2340' },
+                    { name: 'PubMed Central', url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10234567/' },
+                    { name: 'MDPI', url: 'https://www.mdpi.com/2077-0383/12/5/1234' },
+                    { name: 'BMC', url: 'https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-023-02900-1' },
+                    { name: 'PLOS', url: 'https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1004000' }
+                  ].map((source) => (
+                    <button
+                      key={source.name}
+                      onClick={() => setInput(source.url)}
+                      className="text-left px-3 py-2 rounded-lg bg-slate-900/50 hover:bg-purple-500/10 transition-colors border border-slate-700/50 hover:border-purple-500/30"
+                    >
+                      <span className="text-purple-400 font-medium text-xs">{source.name}</span>
+                      <span className="text-slate-500 text-[10px] block truncate">{source.url}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-slate-500 text-xs text-center pt-2 border-t border-slate-700/50">
+                Click any example above to auto-fill the search box
+              </p>
             </div>
           </details>
         </div>
