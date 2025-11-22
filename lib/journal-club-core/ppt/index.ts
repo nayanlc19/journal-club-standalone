@@ -3,12 +3,12 @@
  * Converts critical appraisal to PowerPoint presentation
  */
 
-export * from './slide-formatter.js';
-export * from './presenton-client.js';
+export * from './slide-formatter';
+export * from './presenton-client';
 
-import { formatForPresentation } from './slide-formatter.js';
-import { createPresentonClient, GeneratePPTOptions } from './presenton-client.js';
-import { GeneratedAppraisal } from '../text-generator.js';
+import { formatForPresentation } from './slide-formatter';
+import { createPresentonClient, GeneratePPTOptions } from './presenton-client';
+import { GeneratedAppraisal } from '../text-generator';
 
 /**
  * Generate PowerPoint presentation from critical appraisal

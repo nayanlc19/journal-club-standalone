@@ -4,7 +4,7 @@
  */
 
 import Groq from 'groq-sdk';
-import { performComprehensiveAppraisal } from './appraisal/index.js';
+import { performComprehensiveAppraisal } from './appraisal/index';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || '',

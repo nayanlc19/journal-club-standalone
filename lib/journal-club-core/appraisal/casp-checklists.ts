@@ -4,7 +4,7 @@
  */
 
 import Groq from 'groq-sdk';
-import { StudyType } from './study-type-detector.js';
+import { StudyType } from './study-type-detector';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || '',

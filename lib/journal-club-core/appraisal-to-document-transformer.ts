@@ -3,8 +3,8 @@
  * Converts GeneratedAppraisal (17 markdown sections) into DocumentData for document generators
  */
 
-import { DocumentData, DocumentSection, ChecklistItem, ImageData } from './document-generators/index.js';
-import { TableFigure } from './vision-extractor.js';
+import { DocumentData, DocumentSection, ChecklistItem, ImageData } from './document-generators/index';
+import { TableFigure } from './vision-extractor';
 
 export interface GeneratedAppraisal {
   clinicalQuestion: string;

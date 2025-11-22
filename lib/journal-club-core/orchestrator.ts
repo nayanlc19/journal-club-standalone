@@ -3,12 +3,12 @@
  * Coordinates PDF fetching, OCR extraction, and text generation
  */
 
-import { fetchPdfForDoi, fetchFromUrl, extractArticleFromHtml } from './pdf-fetcher.js';
-import { extractPdfWithMarkItDown } from './markitdown-ocr.js';
-import { extractTablesAndFigures } from './vision-extractor.js';
-import { extractWithPDFFigures2, convertPDFFigures2ToTableFigure } from './pdffigures2-extractor.js';
-import { generateCriticalAppraisal, type PaperContent, type GeneratedAppraisal } from './text-generator.js';
-import { handleManualPdfUpload } from './pdf-upload-handler.js';
+import { fetchPdfForDoi, fetchFromUrl, extractArticleFromHtml } from './pdf-fetcher';
+import { extractPdfWithMarkItDown } from './markitdown-ocr';
+import { extractTablesAndFigures } from './vision-extractor';
+import { extractWithPDFFigures2, convertPDFFigures2ToTableFigure } from './pdffigures2-extractor';
+import { generateCriticalAppraisal, type PaperContent, type GeneratedAppraisal } from './text-generator';
+import { handleManualPdfUpload } from './pdf-upload-handler';
 import fs from 'fs/promises';
 import path from 'path';
 

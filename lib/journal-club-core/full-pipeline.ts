@@ -5,9 +5,9 @@
  * Optimized: Sends markdown directly to Gamma API (skips Word file generation)
  */
 
-import { generateJournalClubAppraisal, generateJournalClubAppraisalFromUrl } from './orchestrator.js';
-import { transformAppraisalToDocuments, documentDataToMarkdown } from './appraisal-to-document-transformer.js';
-import { generateDocuments } from './document-generators/index.js';
+import { generateJournalClubAppraisal, generateJournalClubAppraisalFromUrl } from './orchestrator';
+import { transformAppraisalToDocuments, documentDataToMarkdown } from './appraisal-to-document-transformer';
+import { generateDocuments } from './document-generators/index';
 import path from 'path';
 import fs from 'fs/promises';
 

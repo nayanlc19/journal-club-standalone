@@ -3,15 +3,15 @@
  * 3-Tier Evidence-Based Appraisal System
  */
 
-export * from './study-type-detector.js';
-export * from './casp-checklists.js';
-export * from './rob2-assessment.js';
-export * from './equator-compliance.js';
+export * from './study-type-detector';
+export * from './casp-checklists';
+export * from './rob2-assessment';
+export * from './equator-compliance';
 
-import { detectStudyType, StudyTypeResult } from './study-type-detector.js';
-import { performCASPAssessment, CASPResult } from './casp-checklists.js';
-import { performRoB2Assessment, RoB2Result } from './rob2-assessment.js';
-import { checkEquatorCompliance, EquatorResult } from './equator-compliance.js';
+import { detectStudyType, StudyTypeResult } from './study-type-detector';
+import { performCASPAssessment, CASPResult } from './casp-checklists';
+import { performRoB2Assessment, RoB2Result } from './rob2-assessment';
+import { checkEquatorCompliance, EquatorResult } from './equator-compliance';
 
 export interface ComprehensiveAppraisal {
   studyType: StudyTypeResult;

@@ -4,7 +4,7 @@
  */
 
 import fetch from 'node-fetch';
-import { PresentationStructure } from './slide-formatter.js';
+import { PresentationStructure } from './slide-formatter';
 
 export interface PresentonConfig {
   baseUrl?: string;
