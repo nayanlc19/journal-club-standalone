@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: journal-club-standalone
+    runtime: node
+    region: singapore
+    plan: starter
+    branch: master
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
