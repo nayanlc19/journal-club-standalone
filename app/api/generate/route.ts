@@ -80,7 +80,7 @@ async function createGammaPresentation(markdown: string, title: string): Promise
         numCards: 20,
         imageOptions: { source: 'noImages' },
         cardOptions: { dimensions: '16x9' },
-        themeId: 'consultant',
+        themeId: 'zephyr',
         exportAs: 'pptx'
       }),
     });
