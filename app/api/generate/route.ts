@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+// Lazy init to avoid build-time errors
+let groq: Groq | null = null;
+function getGroq() {
+  if (!groq) {
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+  return groq;
+}
 
 // Fetch paper text from CrossRef or publisher
 async function fetchPaperAbstract(doi: string): Promise<{ title: string; abstract: string; authors: string[] }> {
@@ -47,9 +52,9 @@ Generate a structured critical appraisal with these sections:
 
 Format as clean markdown for presentation slides.`;
 
-  const completion = await groq.chat.completions.create({
+  const completion = await getGroq().chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'llama-3.1-70b-versatile',
+    model: 'openai/gpt-oss-120b',
     max_tokens: 4000,
     temperature: 0.3,
   });
