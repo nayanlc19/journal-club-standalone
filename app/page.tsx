@@ -315,7 +315,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Help Section */}
+          {/* Help Section - hide when paper found */}
+          {!paperMetadata && (
           <details className="mt-4" open>
             <summary className="cursor-pointer text-sm font-medium text-teal-400 hover:text-teal-300 transition-colors flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -413,6 +414,66 @@ export default function Home() {
               </p>
             </div>
           </details>
+          )}
+
+          {/* Paper Preview - Inside same card */}
+          {paperMetadata && !result && (
+            <div className="mt-4 pt-4 border-t border-slate-700/50 animate-fade-in">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Paper Found</h2>
+                  <p className="text-slate-500 text-sm">{paperMetadata.sourceType}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-5 p-3 bg-slate-800/50 rounded-xl">
+                <div>
+                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Title</p>
+                  <p className="text-white font-medium text-sm">{paperMetadata.title}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Authors</p>
+                    <p className="text-slate-300 text-xs">{paperMetadata.authors}</p>
+                  </div>
+                  {paperMetadata.doi && (
+                    <div>
+                      <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">DOI</p>
+                      <p className="text-teal-400 text-xs mono">{paperMetadata.doi}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="w-full py-3.5 btn-warm rounded-xl text-sm disabled:cursor-not-allowed"
+              >
+                {generating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {progress}
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Generate Documents
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Error Message */}
@@ -426,65 +487,6 @@ export default function Home() {
               </div>
               <p className="text-red-300 text-sm">{error}</p>
             </div>
-          </div>
-        )}
-
-        {/* Paper Preview */}
-        {paperMetadata && !result && (
-          <div className="glass-card rounded-2xl p-6 mb-6 animate-fade-in-up">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center">
-                <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Paper Found</h2>
-                <p className="text-slate-500 text-sm">{paperMetadata.sourceType}</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-5">
-              <div>
-                <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Title</p>
-                <p className="text-white font-medium">{paperMetadata.title}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Authors</p>
-                  <p className="text-slate-300 text-sm">{paperMetadata.authors}</p>
-                </div>
-                {paperMetadata.doi && (
-                  <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">DOI</p>
-                    <p className="text-teal-400 text-sm mono">{paperMetadata.doi}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="w-full py-3.5 btn-warm rounded-xl text-sm disabled:cursor-not-allowed"
-            >
-              {generating ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  {progress}
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Generate Documents
-                </span>
-              )}
-            </button>
           </div>
         )}
 
