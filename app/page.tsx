@@ -14,6 +14,7 @@ interface PaperMetadata {
 interface GenerationResult {
   success: boolean;
   gammaMarkdown?: string;
+  gammaPptUrl?: string;
   educationalDocPath?: string;
   error?: string;
 }
@@ -552,6 +553,33 @@ export default function Home() {
                   </a>
                 </div>
               </div>
+
+              {/* Gamma PPT */}
+              {result.gammaPptUrl && (
+                <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-white font-medium text-sm">Gamma Presentation</p>
+                        <p className="text-slate-500 text-xs">PowerPoint ready to download</p>
+                      </div>
+                    </div>
+                    <a
+                      href={result.gammaPptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-2 px-4 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors text-sm font-medium"
+                    >
+                      Download PPT
+                    </a>
+                  </div>
+                </div>
+              )}
 
               {/* Educational Doc */}
               {result.educationalDocPath && (
