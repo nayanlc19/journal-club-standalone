@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface PaperMetadata {
   title: string;
@@ -20,13 +20,19 @@ interface GenerationResult {
 
 export default function Home() {
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [paperMetadata, setPaperMetadata] = useState<PaperMetadata | null>(null);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState('');
+
+  // PDF Upload states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSearch = async () => {
     if (!input.trim()) return;
@@ -59,7 +65,7 @@ export default function Home() {
   };
 
   const handleGenerate = async () => {
-    if (!paperMetadata) return;
+    if (!paperMetadata && !uploadedFile) return;
 
     setGenerating(true);
     setProgress('Starting generation...');
@@ -69,7 +75,10 @@ export default function Home() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: input.trim() }),
+        body: JSON.stringify({
+          input: uploadedFile || input.trim(),
+          isPdfUpload: !!uploadedFile
+        }),
       });
 
       const data = await res.json();
@@ -88,6 +97,85 @@ export default function Home() {
     }
   };
 
+  const handleFileUpload = async (file: File) => {
+    if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+      setError('Please upload a PDF file');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+    setError('');
+    setUploadedFile(null);
+
+    const formData = new FormData();
+    formData.append('pdf', file);
+
+    try {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(percent);
+        }
+      });
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          if (data.success) {
+            setUploadedFile(data.filePath);
+            setPaperMetadata({
+              title: file.name.replace('.pdf', ''),
+              authors: 'From uploaded PDF',
+              journal: 'Unknown',
+              year: new Date().getFullYear().toString(),
+              doi: '',
+              sourceType: 'PDF Upload'
+            });
+          } else {
+            setError(data.error || 'Upload failed');
+          }
+        } else {
+          setError('Upload failed');
+        }
+        setUploading(false);
+      };
+
+      xhr.onerror = () => {
+        setError('Upload failed - network error');
+        setUploading(false);
+      };
+
+      xhr.open('POST', '/api/upload');
+      xhr.send(formData);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+      setError(errorMessage);
+      setUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     alert('Copied to clipboard!');
@@ -95,163 +183,199 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Journal Club Generator
           </h1>
-          <p className="text-lg text-gray-600">
-            Enter a DOI or paper URL to generate presentation materials
+          <p className="text-gray-600">
+            Enter a DOI, paper URL, or upload a PDF to generate presentation materials
           </p>
         </div>
 
-        {/* Search Form */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            DOI or Paper URL
-          </label>
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="e.g., 10.1056/NEJMoa1234567 or https://japi.org/article/..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <button
-              onClick={handleSearch}
-              disabled={searching || !input.trim()}
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        {/* Main Input Section */}
+        <div className="bg-white rounded-xl shadow-lg p-5 mb-6">
+          {/* Search by DOI/URL */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Option 1: DOI or Paper URL
+            </label>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="e.g., 10.1056/NEJMoa1234567 or https://japi.org/article/..."
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                disabled={!!uploadedFile}
+              />
+              <button
+                onClick={handleSearch}
+                disabled={searching || !input.trim() || !!uploadedFile}
+                className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
+              >
+                {searching ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-3 bg-white text-gray-500">OR</span>
+            </div>
+          </div>
+
+          {/* PDF Upload */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Option 2: Upload PDF directly
+            </label>
+            <div
+              className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
+              } ${uploadedFile ? 'border-green-500 bg-green-50' : ''}`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
             >
-              {searching ? 'Searching...' : 'Search'}
-            </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".pdf"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+              />
+
+              {uploading ? (
+                <div className="py-2">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-blue-600 font-medium">Uploading... {uploadProgress}%</span>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{uploadProgress < 100 ? 'Please wait...' : 'Processing...'}</p>
+                </div>
+              ) : uploadedFile ? (
+                <div className="py-2">
+                  <svg className="mx-auto h-8 w-8 text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <p className="text-green-700 font-medium">Upload successful!</p>
+                  <p className="text-sm text-gray-600">Ready to generate documents</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setUploadedFile(null); setPaperMetadata(null); }}
+                    className="mt-2 text-xs text-red-600 hover:text-red-800"
+                  >
+                    Remove and try different file
+                  </button>
+                </div>
+              ) : (
+                <div className="py-2">
+                  <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="text-gray-600 font-medium">Drop PDF here or click to browse</p>
+                  <p className="text-xs text-gray-500 mt-1">Have a PDF? Upload it directly!</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Help Section */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-            <h3 className="font-semibold text-blue-900 mb-3">How to find paper information:</h3>
-
-            {/* What is DOI */}
-            <div className="mb-4">
-              <p className="text-sm text-blue-800 mb-2">
-                <strong>What is a DOI?</strong> A DOI (Digital Object Identifier) is a unique code for any paper.
-                Look for it on the paper&apos;s first page, usually near the title or in the footer. It looks like: <code className="bg-blue-100 px-1 rounded">10.xxxx/xxxxx</code>
+          {/* Help Section - Compact */}
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800">
+              Need help? Click for examples
+            </summary>
+            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+              <p className="text-blue-800 mb-3">
+                <strong>What is a DOI?</strong> A unique code like <code className="bg-blue-100 px-1 rounded">10.xxxx/xxxxx</code> found on papers first page.
               </p>
-            </div>
 
-            {/* Examples */}
-            <div className="grid md:grid-cols-2 gap-4 text-sm">
-              {/* DOI Examples */}
-              <div>
-                <p className="font-medium text-blue-900 mb-2">DOI Examples:</p>
-                <ul className="space-y-1 text-blue-700">
-                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1056/NEJMoa2302392')}>
-                    <code className="bg-white px-1 rounded">10.1056/NEJMoa2302392</code>
-                  </li>
-                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1016/S0140-6736(23)00806-1')}>
-                    <code className="bg-white px-1 rounded">10.1016/S0140-6736(23)00806-1</code>
-                  </li>
-                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1001/jama.2023.4900')}>
-                    <code className="bg-white px-1 rounded">10.1001/jama.2023.4900</code>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Title Examples */}
-              <div>
-                <p className="font-medium text-blue-900 mb-2">Paper Title Examples:</p>
-                <ul className="space-y-1 text-blue-700 text-xs">
-                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('Semaglutide and Cardiovascular Outcomes in Obesity')}>
-                    Semaglutide and Cardiovascular Outcomes in Obesity
-                  </li>
-                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('GLP-1 agonists in type 2 diabetes')}>
-                    GLP-1 agonists in type 2 diabetes
-                  </li>
-                  <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('Effect of SGLT2 inhibitors on heart failure')}>
-                    Effect of SGLT2 inhibitors on heart failure
-                  </li>
-                </ul>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div>
+                  <p className="font-medium text-blue-900 mb-1">DOI Examples (click to use):</p>
+                  <ul className="space-y-1 text-blue-700 text-xs">
+                    <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1056/NEJMoa2302392')}>
+                      <code className="bg-white px-1 rounded">10.1056/NEJMoa2302392</code>
+                    </li>
+                    <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1016/S0140-6736(23)00806-1')}>
+                      <code className="bg-white px-1 rounded">10.1016/S0140-6736(23)00806-1</code>
+                    </li>
+                    <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1001/jama.2023.4900')}>
+                      <code className="bg-white px-1 rounded">10.1001/jama.2023.4900</code>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-medium text-blue-900 mb-1">Open Access URLs:</p>
+                  <ul className="space-y-1 text-blue-700 text-xs">
+                    <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://www.japi.org/article/view/2340')}>
+                      JAPI, PubMed Central, MDPI, BMC, PLOS
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
-
-            {/* Publisher URLs */}
-            <div className="mt-4">
-              <p className="font-medium text-blue-900 mb-2">Open Access Paper URLs (click to try):</p>
-              <ul className="space-y-1 text-xs text-blue-700">
-                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://www.japi.org/article/view/2340')}>
-                  <span className="font-medium">JAPI:</span> https://www.japi.org/article/view/2340
-                </li>
-                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10234567/')}>
-                  <span className="font-medium">PubMed Central:</span> https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10234567/
-                </li>
-                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://www.mdpi.com/2077-0383/12/5/1234')}>
-                  <span className="font-medium">MDPI:</span> https://www.mdpi.com/2077-0383/12/5/1234
-                </li>
-                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-023-02900-1')}>
-                  <span className="font-medium">BMC:</span> https://bmcmedicine.biomedcentral.com/articles/...
-                </li>
-                <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1004000')}>
-                  <span className="font-medium">PLOS:</span> https://journals.plos.org/plosmedicine/article?...
-                </li>
-              </ul>
-            </div>
-
-            <p className="text-xs text-blue-600 mt-3 italic">
-              Tip: Click any example above to auto-fill and try it!
-            </p>
-          </div>
+          </details>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-8">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
             {error}
           </div>
         )}
 
         {/* Paper Preview */}
         {paperMetadata && !result && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Paper Found</h2>
-            <div className="space-y-3">
+          <div className="bg-white rounded-xl shadow-lg p-5 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Paper Found</h2>
+            <div className="space-y-2 text-sm">
               <div>
-                <span className="text-sm font-medium text-gray-500">Title:</span>
+                <span className="font-medium text-gray-500">Title:</span>
                 <p className="text-gray-900">{paperMetadata.title}</p>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Authors:</span>
-                <p className="text-gray-900">{paperMetadata.authors}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Journal:</span>
-                <p className="text-gray-900">{paperMetadata.journal} ({paperMetadata.year})</p>
-              </div>
-              {paperMetadata.doi && (
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-sm font-medium text-gray-500">DOI:</span>
-                  <p className="text-gray-900">{paperMetadata.doi}</p>
+                  <span className="font-medium text-gray-500">Authors:</span>
+                  <p className="text-gray-900">{paperMetadata.authors}</p>
                 </div>
-              )}
-              <div>
-                <span className="text-sm font-medium text-gray-500">Source:</span>
-                <p className="text-gray-900">{paperMetadata.sourceType}</p>
+                <div>
+                  <span className="font-medium text-gray-500">Source:</span>
+                  <p className="text-gray-900">{paperMetadata.sourceType}</p>
+                </div>
               </div>
             </div>
 
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="mt-6 w-full px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="mt-4 w-full px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
-              {generating ? 'Generating...' : 'Confirm & Generate Documents'}
+              {generating ? 'Generating...' : 'Generate Documents'}
             </button>
 
             {generating && (
-              <div className="mt-4 text-center text-gray-600">
+              <div className="mt-3 text-center text-gray-600 text-sm">
                 <div className="animate-pulse">{progress}</div>
-                <p className="text-sm text-gray-500 mt-2">This takes about 10-15 seconds...</p>
+                <p className="text-xs text-gray-500 mt-1">This takes about 10-15 seconds...</p>
               </div>
             )}
           </div>
@@ -259,49 +383,44 @@ export default function Home() {
 
         {/* Results */}
         {result && result.success && (
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white rounded-xl shadow-lg p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <h2 className="text-xl font-semibold text-gray-900">Generation Complete!</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Generation Complete!</h2>
             </div>
 
-            <div className="space-y-4">
-              {/* Gamma Markdown */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <h3 className="font-medium text-gray-900 mb-2">Gamma Markdown</h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  {result.gammaMarkdown?.length?.toLocaleString()} characters - Ready for Gamma.app
+            <div className="space-y-3">
+              <div className="border border-gray-200 rounded-lg p-3">
+                <h3 className="font-medium text-gray-900 mb-1 text-sm">Gamma Markdown</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  {result.gammaMarkdown?.length?.toLocaleString()} characters
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => copyToClipboard(result.gammaMarkdown || '')}
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                    className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
                   >
-                    Copy to Clipboard
+                    Copy
                   </button>
                   <a
                     href="https://gamma.app/create"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                    className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
                   >
                     Open Gamma.app
                   </a>
                 </div>
               </div>
 
-              {/* Educational Document */}
               {result.educationalDocPath && (
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900 mb-2">Educational Document</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Word document with full explanations and Defense Q&A
-                  </p>
+                <div className="border border-gray-200 rounded-lg p-3">
+                  <h3 className="font-medium text-gray-900 mb-1 text-sm">Educational Document</h3>
                   <a
                     href={`/api/download?file=${encodeURIComponent(result.educationalDocPath)}`}
-                    className="inline-block px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                    className="inline-block px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm"
                   >
                     Download .docx
                   </a>
@@ -309,15 +428,15 @@ export default function Home() {
               )}
             </div>
 
-            {/* Start Over */}
             <button
               onClick={() => {
                 setInput('');
                 setPaperMetadata(null);
                 setResult(null);
+                setUploadedFile(null);
                 setError('');
               }}
-              className="mt-6 text-blue-600 hover:text-blue-800 font-medium"
+              className="mt-4 text-blue-600 hover:text-blue-800 font-medium text-sm"
             >
               Generate Another Paper
             </button>
