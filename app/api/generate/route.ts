@@ -78,6 +78,12 @@ async function createGammaPresentation(markdown: string, title: string): Promise
         textMode: 'preserve',
         format: 'presentation',
         numCards: 20,
+        additionalInstructions: 'Add critical appraisal checklist compulsorily',
+        textOptions: {
+          amount: 'detailed',
+          tone: 'educational',
+          audience: 'medical postgraduate students'
+        },
         imageOptions: { source: 'noImages' },
         cardOptions: { dimensions: '16x9' },
         themeId: 'zephyr',
