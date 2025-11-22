@@ -98,7 +98,7 @@ User enters DOI/URL
    PDF Fetch (Sci-Hub, Semantic Scholar, etc.)
        ↓
    OCR/Text Extraction (MarkItDown/Mistral)
-   (full paper text - NO image extraction needed)
+   (full paper text + tables/figures as text - MarkItDown handles this)
        ↓
    Critical Appraisal Generation (Groq)
    - Study Type Detection (hybrid keyword + AI)
@@ -111,16 +111,19 @@ User enters DOI/URL
        ↓
    Educational Word Doc (python-docx)
        ↓
-   [FUTURE] Payment Page
+   Supabase Storage (PPT + Word)
        ↓
-   [FUTURE] Supabase Storage (PPT + Word)
+   Email with download links
        ↓
-   [FUTURE] Email with download links
+   Auto-delete after 48 hours
        ↓
-   [FUTURE] Auto-delete after 48 hours
+   [LATER] Payment Page (before generation)
 ```
 
-**Note:** No image/figure extraction needed - Gamma API doesn't accept custom images.
+**Note:**
+- MarkItDown extracts tables/figures as text - that's included
+- No separate image extraction for Gamma (API doesn't accept custom images)
+- Payment to be added later, after core flow works
 
 ---
 
@@ -271,17 +274,17 @@ lib/
 3. **No Educational Word doc** - Needs full pipeline with python-docx
 4. **No PDF fetch** - Full pipeline needs Sci-Hub/Semantic Scholar integration
 
-### To Implement Full Flow
+### To Implement Full Flow (Priority Order)
 1. Fix remaining `.js` imports in journal-club-core
 2. Fix Groq lazy initialization in all files (text-generator.ts, casp-checklists.ts, etc.)
 3. Integrate PDF fetch from orchestrator.ts
-4. Integrate OCR extraction (MarkItDown)
+4. Integrate OCR extraction (MarkItDown - includes tables/figures as text)
 5. Generate 14-section Gamma markdown
 6. Generate Educational Word doc
-7. Add payment page
-8. Add Supabase storage
-9. Add email notifications
-10. Add 48-hour auto-delete
+7. Add Supabase storage for PPT + Word doc
+8. Add email notifications with download links
+9. Add 48-hour auto-delete from Supabase
+10. [LATER] Add payment page (before generation)
 
 ---
 
