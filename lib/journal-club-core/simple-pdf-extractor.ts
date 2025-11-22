@@ -3,7 +3,8 @@
  * Faster alternative to Chandra for MVP
  */
 
-import pdf from 'pdf-parse';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdf = require('pdf-parse');
 import fs from 'fs/promises';
 
 export interface SimplePdfResult {
