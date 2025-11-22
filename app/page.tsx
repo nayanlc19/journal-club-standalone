@@ -178,68 +178,85 @@ export default function Home() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-animated">
+      <div className="max-w-4xl mx-auto px-4 py-10">
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Journal Club Generator
+        <div className="text-center mb-8 animate-fade-in-up">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20 mb-4">
+            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+            <span className="text-teal-400 text-sm font-medium">Research Paper Analysis</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+            Journal Club <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400">Generator</span>
           </h1>
-          <p className="text-gray-600">
-            Enter a DOI, paper URL, or upload a PDF to generate presentation materials
+          <p className="text-slate-400 text-lg max-w-xl mx-auto">
+            Transform research papers into beautiful presentations with AI-powered analysis
           </p>
         </div>
 
-        {/* Main Input Section */}
-        <div className="bg-white rounded-xl shadow-lg p-5 mb-6">
-          {/* Search by DOI/URL */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Option 1: DOI or Paper URL
+        {/* Main Card */}
+        <div className="glass-card rounded-2xl p-6 mb-6 animate-fade-in-up delay-100" style={{ opacity: 0 }}>
+          {/* DOI/URL Search */}
+          <div className="mb-5">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-2">
+              <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Search by DOI or URL
             </label>
             <div className="flex gap-3">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="e.g., 10.1056/NEJMoa1234567 or https://japi.org/article/..."
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                placeholder="10.1056/NEJMoa... or https://japi.org/article/..."
+                className="flex-1 px-4 py-3 input-modern rounded-xl text-sm mono"
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 disabled={!!uploadedFile}
               />
               <button
                 onClick={handleSearch}
                 disabled={searching || !input.trim() || !!uploadedFile}
-                className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
+                className="px-6 py-3 btn-accent rounded-xl text-sm disabled:cursor-not-allowed"
               >
-                {searching ? 'Searching...' : 'Search'}
+                {searching ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Searching
+                  </span>
+                ) : 'Search'}
               </button>
             </div>
           </div>
 
           {/* Divider */}
-          <div className="relative my-4">
+          <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-slate-700"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white text-gray-500">OR</span>
+            <div className="relative flex justify-center">
+              <span className="px-4 bg-slate-800/50 text-slate-500 text-sm">or upload directly</span>
             </div>
           </div>
 
-          {/* PDF Upload */}
+          {/* PDF Upload Zone */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Option 2: Upload PDF directly
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-2">
+              <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Upload PDF
             </label>
             <div
-              className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-                dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
-              } ${uploadedFile ? 'border-green-500 bg-green-50' : ''}`}
+              className={`upload-zone rounded-xl p-5 text-center cursor-pointer transition-all duration-300 ${
+                dragActive ? 'drag-active' : ''
+              } ${uploadedFile ? 'uploaded' : ''}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -255,81 +272,79 @@ export default function Home() {
               />
 
               {uploading ? (
-                <div className="py-2">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <div className="py-3">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <svg className="animate-spin h-5 w-5 text-teal-400" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    <span className="text-blue-600 font-medium">Uploading... {uploadProgress}%</span>
+                    <span className="text-teal-400 font-semibold mono">{uploadProgress}%</span>
                   </div>
-                  {/* Progress Bar */}
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
+                  <div className="progress-bar w-full h-2 rounded-full">
+                    <div className="progress-bar-fill h-full rounded-full" style={{ width: `${uploadProgress}%` }}></div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{uploadProgress < 100 ? 'Please wait...' : 'Processing...'}</p>
+                  <p className="text-slate-500 text-xs mt-2">{uploadProgress < 100 ? 'Uploading...' : 'Processing...'}</p>
                 </div>
               ) : uploadedFile ? (
-                <div className="py-2">
-                  <svg className="mx-auto h-8 w-8 text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <p className="text-green-700 font-medium">Upload successful!</p>
-                  <p className="text-sm text-gray-600">Ready to generate documents</p>
+                <div className="py-3">
+                  <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <p className="text-green-400 font-semibold">Upload Complete!</p>
+                  <p className="text-slate-400 text-sm">Ready to generate</p>
                   <button
                     onClick={(e) => { e.stopPropagation(); setUploadedFile(null); setPaperMetadata(null); }}
-                    className="mt-2 text-xs text-red-600 hover:text-red-800"
+                    className="mt-2 text-xs text-red-400 hover:text-red-300 transition-colors"
                   >
-                    Remove and try different file
+                    Remove file
                   </button>
                 </div>
               ) : (
-                <div className="py-2">
-                  <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="text-gray-600 font-medium">Drop PDF here or click to browse</p>
-                  <p className="text-xs text-gray-500 mt-1">Have a PDF? Upload it directly!</p>
+                <div className="py-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-slate-300 font-medium">Drop your PDF here</p>
+                  <p className="text-slate-500 text-sm">or click to browse</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Help Section - Compact */}
+          {/* Help Section */}
           <details className="mt-4">
-            <summary className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800">
-              Need help? Click for examples
+            <summary className="cursor-pointer text-sm font-medium text-teal-400 hover:text-teal-300 transition-colors flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Need examples? Click here
             </summary>
-            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
-              <p className="text-blue-800 mb-3">
-                <strong>What is a DOI?</strong> A unique code like <code className="bg-blue-100 px-1 rounded">10.xxxx/xxxxx</code> found on papers first page.
+            <div className="mt-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+              <p className="text-slate-400 text-sm mb-3">
+                <strong className="text-slate-300">DOI</strong> = Digital Object Identifier. Find it on the paper&apos;s first page: <code className="mono text-teal-400 bg-slate-900/50 px-1.5 py-0.5 rounded">10.xxxx/xxxxx</code>
               </p>
-
-              <div className="grid md:grid-cols-2 gap-3">
+              <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="font-medium text-blue-900 mb-1">DOI Examples (click to use):</p>
-                  <ul className="space-y-1 text-blue-700 text-xs">
-                    <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1056/NEJMoa2302392')}>
-                      <code className="bg-white px-1 rounded">10.1056/NEJMoa2302392</code>
-                    </li>
-                    <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1016/S0140-6736(23)00806-1')}>
-                      <code className="bg-white px-1 rounded">10.1016/S0140-6736(23)00806-1</code>
-                    </li>
-                    <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('10.1001/jama.2023.4900')}>
-                      <code className="bg-white px-1 rounded">10.1001/jama.2023.4900</code>
-                    </li>
-                  </ul>
+                  <p className="text-slate-300 font-medium mb-2">DOI Examples:</p>
+                  <div className="space-y-1">
+                    {['10.1056/NEJMoa2302392', '10.1016/S0140-6736(23)00806-1', '10.1001/jama.2023.4900'].map((doi) => (
+                      <button
+                        key={doi}
+                        onClick={() => setInput(doi)}
+                        className="block w-full text-left px-2 py-1 rounded bg-slate-900/50 text-teal-400 hover:bg-teal-500/10 transition-colors mono text-xs"
+                      >
+                        {doi}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <p className="font-medium text-blue-900 mb-1">Open Access URLs:</p>
-                  <ul className="space-y-1 text-blue-700 text-xs">
-                    <li className="cursor-pointer hover:text-blue-900" onClick={() => setInput('https://www.japi.org/article/view/2340')}>
-                      JAPI, PubMed Central, MDPI, BMC, PLOS
-                    </li>
-                  </ul>
+                  <p className="text-slate-300 font-medium mb-2">Supported Sources:</p>
+                  <p className="text-slate-500 text-xs">JAPI, PubMed Central, MDPI, BMC, PLOS, and any DOI</p>
                 </div>
               </div>
             </div>
@@ -338,92 +353,148 @@ export default function Home() {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
-            {error}
+          <div className="glass-card rounded-xl p-4 mb-6 border-red-500/30 bg-red-500/10 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <p className="text-red-300 text-sm">{error}</p>
+            </div>
           </div>
         )}
 
         {/* Paper Preview */}
         {paperMetadata && !result && (
-          <div className="bg-white rounded-xl shadow-lg p-5 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Paper Found</h2>
-            <div className="space-y-2 text-sm">
+          <div className="glass-card rounded-2xl p-6 mb-6 animate-fade-in-up">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
               <div>
-                <span className="font-medium text-gray-500">Title:</span>
-                <p className="text-gray-900">{paperMetadata.title}</p>
+                <h2 className="text-lg font-semibold text-white">Paper Found</h2>
+                <p className="text-slate-500 text-sm">{paperMetadata.sourceType}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-5">
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Title</p>
+                <p className="text-white font-medium">{paperMetadata.title}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="font-medium text-gray-500">Authors:</span>
-                  <p className="text-gray-900">{paperMetadata.authors}</p>
+                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Authors</p>
+                  <p className="text-slate-300 text-sm">{paperMetadata.authors}</p>
                 </div>
-                <div>
-                  <span className="font-medium text-gray-500">Source:</span>
-                  <p className="text-gray-900">{paperMetadata.sourceType}</p>
-                </div>
+                {paperMetadata.doi && (
+                  <div>
+                    <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">DOI</p>
+                    <p className="text-teal-400 text-sm mono">{paperMetadata.doi}</p>
+                  </div>
+                )}
               </div>
             </div>
 
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="mt-4 w-full px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3.5 btn-warm rounded-xl text-sm disabled:cursor-not-allowed"
             >
-              {generating ? 'Generating...' : 'Generate Documents'}
+              {generating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {progress}
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Generate Documents
+                </span>
+              )}
             </button>
-
-            {generating && (
-              <div className="mt-3 text-center text-gray-600 text-sm">
-                <div className="animate-pulse">{progress}</div>
-                <p className="text-xs text-gray-500 mt-1">This takes about 10-15 seconds...</p>
-              </div>
-            )}
           </div>
         )}
 
         {/* Results */}
         {result && result.success && (
-          <div className="bg-white rounded-xl shadow-lg p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <h2 className="text-lg font-semibold text-gray-900">Generation Complete!</h2>
+          <div className="glass-card rounded-2xl p-6 animate-fade-in-up">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Generation Complete!</h2>
+                <p className="text-slate-500 text-sm">Your documents are ready</p>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="border border-gray-200 rounded-lg p-3">
-                <h3 className="font-medium text-gray-900 mb-1 text-sm">Gamma Markdown</h3>
-                <p className="text-xs text-gray-600 mb-2">
-                  {result.gammaMarkdown?.length?.toLocaleString()} characters
-                </p>
+            <div className="space-y-4">
+              {/* Gamma Markdown */}
+              <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-white font-medium text-sm">Gamma Markdown</p>
+                      <p className="text-slate-500 text-xs mono">{result.gammaMarkdown?.length?.toLocaleString()} chars</p>
+                    </div>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => copyToClipboard(result.gammaMarkdown || '')}
-                    className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+                    className="flex-1 py-2 px-4 rounded-lg bg-slate-700/50 text-slate-300 hover:bg-slate-700 transition-colors text-sm font-medium"
                   >
-                    Copy
+                    Copy to Clipboard
                   </button>
                   <a
                     href="https://gamma.app/create"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
+                    className="py-2 px-4 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors text-sm font-medium"
                   >
-                    Open Gamma.app
+                    Open Gamma
                   </a>
                 </div>
               </div>
 
+              {/* Educational Doc */}
               {result.educationalDocPath && (
-                <div className="border border-gray-200 rounded-lg p-3">
-                  <h3 className="font-medium text-gray-900 mb-1 text-sm">Educational Document</h3>
-                  <a
-                    href={`/api/download?file=${encodeURIComponent(result.educationalDocPath)}`}
-                    className="inline-block px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm"
-                  >
-                    Download .docx
-                  </a>
+                <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-white font-medium text-sm">Educational Document</p>
+                        <p className="text-slate-500 text-xs">Word doc with Q&A</p>
+                      </div>
+                    </div>
+                    <a
+                      href={`/api/download?file=${encodeURIComponent(result.educationalDocPath)}`}
+                      className="py-2 px-4 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors text-sm font-medium"
+                    >
+                      Download .docx
+                    </a>
+                  </div>
                 </div>
               )}
             </div>
@@ -436,12 +507,20 @@ export default function Home() {
                 setUploadedFile(null);
                 setError('');
               }}
-              className="mt-4 text-blue-600 hover:text-blue-800 font-medium text-sm"
+              className="mt-5 text-teal-400 hover:text-teal-300 font-medium text-sm transition-colors flex items-center gap-2 mx-auto"
             >
-              Generate Another Paper
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Generate Another
             </button>
           </div>
         )}
+
+        {/* Footer */}
+        <div className="text-center mt-8 text-slate-600 text-sm">
+          Powered by AI analysis
+        </div>
       </div>
     </div>
   );
