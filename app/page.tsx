@@ -21,6 +21,7 @@ interface GenerationResult {
 
 export default function Home() {
   const [input, setInput] = useState('');
+  const [email, setEmail] = useState('');
   const [searching, setSearching] = useState(false);
   const [paperMetadata, setPaperMetadata] = useState<PaperMetadata | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -67,6 +68,10 @@ export default function Home() {
 
   const handleGenerate = async () => {
     if (!paperMetadata && !uploadedFile) return;
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      return;
+    }
 
     setGenerating(true);
     setProgress('Starting generation...');
@@ -78,7 +83,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           input: uploadedFile || input.trim(),
-          isPdfUpload: !!uploadedFile
+          isPdfUpload: !!uploadedFile,
+          email: email.trim()
         }),
       });
 
@@ -273,10 +279,28 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Email Input */}
+              <div className="mb-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-2">
+                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Email for Download Links
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your.email@example.com"
+                  className="w-full px-4 py-2 input-modern rounded-lg text-sm"
+                />
+                <p className="text-slate-500 text-xs mt-2">We'll email you the download links for both documents</p>
+              </div>
+
               <button
                 onClick={handleGenerate}
-                disabled={generating}
-                className="w-full py-3 btn-warm rounded-xl text-sm disabled:cursor-not-allowed"
+                disabled={generating || !email.trim()}
+                className="w-full py-3 btn-warm rounded-xl text-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {generating ? (
                   <span className="flex items-center justify-center gap-2">
@@ -521,90 +545,36 @@ export default function Home() {
             </div>
 
             <div className="space-y-4">
-              {/* Gamma Markdown */}
-              <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-white font-medium text-sm">Gamma Markdown</p>
-                      <p className="text-slate-500 text-xs mono">{result.gammaMarkdown?.length?.toLocaleString()} chars</p>
-                    </div>
+              {/* Email Confirmation */}
+              <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">Check your email!</p>
+                    <p className="text-blue-300 text-xs">{email}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => copyToClipboard(result.gammaMarkdown || '')}
-                    className="flex-1 py-2 px-4 rounded-lg bg-slate-700/50 text-slate-300 hover:bg-slate-700 transition-colors text-sm font-medium"
-                  >
-                    Copy to Clipboard
-                  </button>
-                  <a
-                    href="https://gamma.app/create"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-2 px-4 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors text-sm font-medium"
-                  >
-                    Open Gamma
-                  </a>
-                </div>
+                <p className="text-blue-200 text-sm leading-relaxed">
+                  We're generating your documents and will send download links to your email within a few minutes. You'll receive:
+                </p>
+                <ul className="mt-3 space-y-2 text-blue-200 text-sm">
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-400">✓</span>
+                    <span>PowerPoint presentation (Gamma)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-400">✓</span>
+                    <span>Educational Word document</span>
+                  </li>
+                </ul>
+                <p className="text-blue-300 text-xs mt-3 border-t border-blue-500/20 pt-3">
+                  Links expire after 48 hours. If you don't see the email, check your spam folder.
+                </p>
               </div>
-
-              {/* Gamma PPT */}
-              {result.gammaPptUrl && (
-                <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-white font-medium text-sm">Gamma Presentation</p>
-                        <p className="text-slate-500 text-xs">PowerPoint ready to download</p>
-                      </div>
-                    </div>
-                    <a
-                      href={result.gammaPptUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-2 px-4 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors text-sm font-medium"
-                    >
-                      Download PPT
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {/* Educational Doc */}
-              {result.educationalDocPath && (
-                <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-white font-medium text-sm">Educational Document</p>
-                        <p className="text-slate-500 text-xs">Word doc with Q&A</p>
-                      </div>
-                    </div>
-                    <a
-                      href={`/api/download?file=${encodeURIComponent(result.educationalDocPath)}`}
-                      className="py-2 px-4 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors text-sm font-medium"
-                    >
-                      Download .docx
-                    </a>
-                  </div>
-                </div>
-              )}
             </div>
 
             <button

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { readFile, unlink } from 'fs/promises';
+import { readFile, unlink, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
 // Shared DOI regex pattern
 export const DOI_REGEX = /^10\.\d{4,}/;
@@ -114,6 +116,172 @@ Format as clean markdown suitable for Gamma presentation slides.`;
   return completion.choices[0]?.message?.content || 'Generation failed';
 }
 
+// Generate educational Word document
+async function generateEducationalDoc(appraisal: string, paperTitle: string, authors: string[]): Promise<Buffer> {
+  const { Document, Packer, Paragraph, HeadingLevel } = await import('docx');
+
+  const sections = appraisal.split(/\n##\s+/).filter(s => s.trim());
+  const paragraphs: any[] = [];
+
+  // Add title
+  paragraphs.push(new Paragraph({
+    text: `Educational Summary: ${paperTitle}`,
+    heading: HeadingLevel.HEADING_1,
+    spacing: { after: 200 }
+  }));
+
+  // Add authors
+  paragraphs.push(new Paragraph({
+    text: `By: ${authors.join(', ')}`,
+    spacing: { after: 400 }
+  }));
+
+  // Add sections
+  for (const section of sections) {
+    const lines = section.split('\n');
+    const heading = lines[0]?.trim() || 'Section';
+
+    paragraphs.push(new Paragraph({
+      text: heading,
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 200, after: 100 }
+    }));
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i]?.trim();
+      if (line) {
+        paragraphs.push(new Paragraph({
+          text: line.replace(/^\*\*/, '').replace(/\*\*$/, ''),
+          spacing: { after: 100 }
+        }));
+      }
+    }
+  }
+
+  // Add Q&A section
+  paragraphs.push(new Paragraph({
+    text: 'Defense Questions & Answers',
+    heading: HeadingLevel.HEADING_2,
+    spacing: { before: 400, after: 100 }
+  }));
+
+  paragraphs.push(new Paragraph({
+    text: 'These questions help you prepare for journal club discussion:',
+    spacing: { after: 100 }
+  }));
+
+  const doc = new Document({ sections: [{ children: paragraphs }] });
+  const buffer = await Packer.toBuffer(doc);
+  return buffer;
+}
+
+// Upload file to Supabase Storage
+async function uploadToSupabase(fileName: string, fileBuffer: Buffer, contentType: string): Promise<string> {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Supabase credentials not configured');
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const bucketName = 'journal-club-files';
+
+  try {
+    // Create bucket if it doesn't exist (idempotent)
+    await supabase.storage.createBucket(bucketName, { public: false }).catch(() => {});
+
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .upload(fileName, fileBuffer, {
+        contentType,
+        upsert: false,
+      });
+
+    if (error) throw error;
+
+    console.log(`[Supabase] Uploaded: ${fileName}`);
+    return fileName;
+  } catch (error) {
+    console.error(`[Supabase] Upload failed:`, error);
+    throw error;
+  }
+}
+
+// Create signed download URL from Supabase
+async function getSignedUrl(fileName: string, expiresIn: number = 172800): Promise<string> {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Supabase credentials not configured');
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const bucketName = 'journal-club-files';
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .createSignedUrl(fileName, expiresIn);
+
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+// Send email via Resend
+async function sendDownloadEmail(email: string, paperTitle: string, pptUrl: string, docxUrl: string): Promise<void> {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey) {
+    throw new Error('Resend API key not configured');
+  }
+
+  const resend = new Resend(resendApiKey);
+
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h1 style="color: #333;">Your Journal Club Documents are Ready!</h1>
+      <p style="color: #666; font-size: 16px;">
+        We've generated your critical appraisal documents for:
+      </p>
+      <p style="background: #f5f5f5; padding: 12px; border-left: 4px solid #0ea5e9; margin: 20px 0;">
+        <strong>${paperTitle}</strong>
+      </p>
+
+      <h2 style="color: #333; margin-top: 30px;">Download Your Documents:</h2>
+
+      <table style="width: 100%; margin: 20px 0;">
+        <tr>
+          <td style="padding: 12px;">
+            <a href="${pptUrl}" style="background: #0ea5e9; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              📊 Download PowerPoint
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 12px;">
+            <a href="${docxUrl}" style="background: #10b981; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              📄 Download Word Document
+            </a>
+          </td>
+        </tr>
+      </table>
+
+      <p style="color: #999; font-size: 12px; margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+        <strong>Note:</strong> Download links expire after 48 hours. If you don't see this email in your inbox, check your spam folder.
+      </p>
+    </div>
+  `;
+
+  await resend.emails.send({
+    from: 'SmartDNBPrep <noreply@smartdnbprep.com>',
+    to: email,
+    subject: `Journal Club: ${paperTitle}`,
+    html: emailHtml,
+  });
+
+  console.log(`[Email] Sent to: ${email}`);
+}
+
 // Call Gamma API to create presentation
 async function createGammaPresentation(markdown: string, title: string): Promise<{ url: string; id: string } | null> {
   const apiKey = process.env.GAMMA_API_KEY;
@@ -191,10 +359,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { input, isPdfUpload } = body;
+    const { input, isPdfUpload, email } = body;
 
     if (!input) {
       return NextResponse.json({ success: false, error: 'Input is required' }, { status: 400 });
+    }
+
+    if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      return NextResponse.json({ success: false, error: 'Valid email is required' }, { status: 400 });
     }
 
     let paper: { title: string; content: string; authors: string[]; isFullText: boolean };
@@ -247,11 +419,41 @@ export async function POST(request: NextRequest) {
     // Create Gamma presentation (if API key available)
     const gammaResult = await createGammaPresentation(gammaMarkdown, paper.title);
 
+    if (!gammaResult?.url) {
+      throw new Error('Failed to generate PowerPoint presentation');
+    }
+
+    // Generate educational Word document
+    const docBuffer = await generateEducationalDoc(gammaMarkdown, paper.title, paper.authors);
+    console.log(`[Generate] Generated Word doc: ${docBuffer.length} bytes`);
+
+    // Download PPT from Gamma and upload to Supabase
+    const timestamp = Date.now();
+    const pptFileName = `ppt_${timestamp}.pptx`;
+    const docxFileName = `doc_${timestamp}.docx`;
+
+    // Download PPT from Gamma
+    const pptRes = await fetch(gammaResult.url);
+    if (!pptRes.ok) {
+      throw new Error('Failed to download PPT from Gamma');
+    }
+    const pptBuffer = Buffer.from(await pptRes.arrayBuffer());
+
+    // Upload both files to Supabase
+    await uploadToSupabase(pptFileName, pptBuffer, 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    await uploadToSupabase(docxFileName, docBuffer, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+
+    // Create signed download URLs (48 hours)
+    const pptSignedUrl = await getSignedUrl(pptFileName, 172800);
+    const docxSignedUrl = await getSignedUrl(docxFileName, 172800);
+
+    // Send email with download links
+    await sendDownloadEmail(email, paper.title, pptSignedUrl, docxSignedUrl);
+
     return NextResponse.json({
       success: true,
-      gammaMarkdown,
-      gammaPptUrl: gammaResult?.url || null,
-      educationalDocPath: null, // Full pipeline needed for Word doc
+      message: `Email sent to ${email}`,
+      gammaMarkdown, // Include for debugging
     });
 
   } catch (error: unknown) {
