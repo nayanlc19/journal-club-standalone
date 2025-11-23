@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
+import { DOI_REGEX } from '../generate/route';
 
 // Check if input is a DOI or URL
 function parseInput(input: string): { type: 'doi' | 'url'; value: string } {
   // DOI pattern
-  if (input.match(/^10\.\d{4,}/)) {
+  if (DOI_REGEX.test(input)) {
     return { type: 'doi', value: input };
   }
   // URL pattern
@@ -18,11 +18,21 @@ function parseInput(input: string): { type: 'doi' | 'url'; value: string } {
 // Fetch metadata from DOI using CrossRef
 async function fetchDOIMetadata(doi: string) {
   try {
-    const response = await axios.get(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
-      timeout: 10000,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    const work = response.data.message;
+    const response = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`CrossRef returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    const work = data.message;
+
     return {
       title: work.title?.[0] || 'Unknown Title',
       authors: work.author?.map((a: { given?: string; family?: string }) => `${a.given || ''} ${a.family || ''}`).join(', ') || 'Unknown Authors',
@@ -40,14 +50,22 @@ async function fetchDOIMetadata(doi: string) {
 // Fetch metadata from URL by scraping
 async function fetchURLMetadata(url: string) {
   try {
-    const response = await axios.get(url, {
-      timeout: 15000,
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
     });
+    clearTimeout(timeoutId);
 
-    const html = response.data;
+    if (!response.ok) {
+      throw new Error(`URL fetch returned ${response.status}`);
+    }
+
+    const html = await response.text();
 
     // Try to extract from Angular state (for JAPI)
     const ngStateMatch = html.match(/<script id="ng-state" type="application\/json">([\s\S]*?)<\/script>/);

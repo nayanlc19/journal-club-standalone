@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { readFile } from 'fs/promises';
+import { readFile, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
+import path from 'path';
+
+// Shared DOI regex pattern
+export const DOI_REGEX = /^10\.\d{4,}/;
 
 // Lazy init to avoid build-time errors
 let groq: Groq | null = null;
@@ -14,6 +18,13 @@ function getGroq() {
 
 // Extract text from PDF using pdf-parse
 async function extractPdfText(filePath: string): Promise<string> {
+  // Security: Validate path is within uploads directory
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  const resolvedPath = path.resolve(filePath);
+  if (!resolvedPath.startsWith(path.resolve(uploadsDir))) {
+    throw new Error('Invalid file path');
+  }
+
   if (!existsSync(filePath)) {
     throw new Error('PDF file not found');
   }
@@ -21,11 +32,37 @@ async function extractPdfText(filePath: string): Promise<string> {
   const pdfBuffer = await readFile(filePath);
   const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
-  const textResult = await parser.getText();
 
-  const fullText = textResult.pages.map(p => p.text).join('\n\n');
-  console.log(`[PDF] Extracted ${fullText.length} chars from ${textResult.pages.length} pages`);
-  return fullText;
+  try {
+    const textResult = await parser.getText();
+    const fullText = textResult.pages.map(p => p.text).join('\n\n');
+    console.log(`[PDF] Extracted ${fullText.length} chars from ${textResult.pages.length} pages`);
+    return fullText;
+  } finally {
+    // Cleanup parser resources
+    await parser.destroy().catch(() => {});
+  }
+}
+
+// Clean up uploaded file after processing
+async function cleanupFile(filePath: string): Promise<void> {
+  try {
+    if (existsSync(filePath)) {
+      await unlink(filePath);
+      console.log(`[Cleanup] Deleted: ${filePath}`);
+    }
+  } catch (error) {
+    console.error(`[Cleanup] Failed to delete ${filePath}:`, error);
+  }
+}
+
+// Sanitize text content for LLM prompt (prevent prompt injection)
+function sanitizeContent(text: string, maxLength: number = 30000): string {
+  return text
+    .substring(0, maxLength)
+    .replace(/```/g, '~~~') // Escape code blocks
+    .replace(/\*\*\s*(system|assistant|user)\s*:/gi, '$1:') // Remove role markers
+    .trim();
 }
 
 // Fetch paper from CrossRef
@@ -121,7 +158,7 @@ async function createGammaPresentation(markdown: string, title: string): Promise
     const generationId = generateData.id;
     console.log(`[Gamma] Generation started: ${generationId}`);
 
-    // Poll for completion
+    // Poll for completion (60 iterations × 2s = 120s max)
     for (let i = 0; i < 60; i++) {
       await new Promise(r => setTimeout(r, 2000));
 
@@ -136,12 +173,13 @@ async function createGammaPresentation(markdown: string, title: string): Promise
         console.log(`[Gamma] Completed: ${status.outputUrl}`);
         return { url: status.outputUrl, id: generationId };
       } else if (status.status === 'failed') {
-        console.error('[Gamma] Generation failed');
-        return null;
+        console.error('[Gamma] Generation failed:', status.error || 'Unknown error');
+        throw new Error('Gamma presentation generation failed');
       }
     }
 
-    return null;
+    console.error('[Gamma] Generation timed out after 120 seconds');
+    throw new Error('Gamma presentation generation timed out');
   } catch (error) {
     console.error('[Gamma] Error:', error);
     return null;
@@ -149,6 +187,8 @@ async function createGammaPresentation(markdown: string, title: string): Promise
 }
 
 export async function POST(request: NextRequest) {
+  let pdfFilePath: string | null = null;
+
   try {
     const body = await request.json();
     const { input, isPdfUpload } = body;
@@ -161,17 +201,18 @@ export async function POST(request: NextRequest) {
 
     if (isPdfUpload) {
       // Handle uploaded PDF
+      pdfFilePath = input; // Store for cleanup
       console.log(`[Generate] Processing uploaded PDF: ${input}`);
 
       const pdfText = await extractPdfText(input);
 
       // Extract title from first line (often the title) or use filename
       const lines = pdfText.split('\n').filter(l => l.trim());
-      const title = lines[0]?.substring(0, 200) || 'Uploaded Paper';
+      const title = sanitizeContent(lines[0] || 'Uploaded Paper', 200);
 
       paper = {
         title,
-        content: pdfText.substring(0, 30000), // Limit to ~30k chars for API
+        content: sanitizeContent(pdfText), // Sanitize and limit content
         authors: ['From uploaded PDF'],
         isFullText: true,
       };
@@ -179,8 +220,7 @@ export async function POST(request: NextRequest) {
       console.log(`[Generate] Extracted ${pdfText.length} chars from PDF`);
     } else {
       // Handle DOI
-      const isDoi = input.match(/^10\.\d{4,}/);
-      if (!isDoi) {
+      if (!DOI_REGEX.test(input)) {
         return NextResponse.json({
           success: false,
           error: 'Currently only DOI input is supported. Enter a DOI like 10.1056/NEJMoa2302392'
@@ -191,8 +231,8 @@ export async function POST(request: NextRequest) {
 
       const crossRefData = await fetchPaperAbstract(input.trim());
       paper = {
-        title: crossRefData.title,
-        content: crossRefData.abstract,
+        title: sanitizeContent(crossRefData.title, 500),
+        content: sanitizeContent(crossRefData.abstract, 10000),
         authors: crossRefData.authors,
         isFullText: false,
       };
@@ -218,6 +258,11 @@ export async function POST(request: NextRequest) {
     console.error('[Generate] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Generation failed';
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+  } finally {
+    // Clean up uploaded PDF file after processing
+    if (pdfFilePath) {
+      await cleanupFile(pdfFilePath);
+    }
   }
 }
 
