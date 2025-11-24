@@ -5,6 +5,7 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { generateRequestId, logGeneration, logStep, categorizeError } from '@/lib/generation-logger';
 
 // Shared DOI regex pattern
 export const DOI_REGEX = /^10\.\d{4,}/;
@@ -177,8 +178,8 @@ async function generateEducationalDoc(appraisal: string, paperTitle: string, aut
 
 // Upload file to Supabase Storage
 async function uploadToSupabase(fileName: string, fileBuffer: Buffer, contentType: string): Promise<string> {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error('Supabase credentials not configured');
@@ -210,8 +211,8 @@ async function uploadToSupabase(fileName: string, fileBuffer: Buffer, contentTyp
 
 // Create signed download URL from Supabase
 async function getSignedUrl(fileName: string, expiresIn: number = 172800): Promise<string> {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error('Supabase credentials not configured');
@@ -356,18 +357,33 @@ async function createGammaPresentation(markdown: string, title: string): Promise
 
 export async function POST(request: NextRequest) {
   let pdfFilePath: string | null = null;
+  const requestId = generateRequestId();
+  const startTime = Date.now();
+  let paperTitle = '';
+  let inputType: 'doi' | 'pdf' | 'topic' = 'doi';
 
   try {
+    logStep(requestId, 'Parsing request', 1);
     const body = await request.json();
     const { input, isPdfUpload, email } = body;
 
     if (!input) {
-      return NextResponse.json({ success: false, error: 'Input is required' }, { status: 400 });
+      return NextResponse.json({
+        success: false,
+        error: 'Input is required',
+        requestId
+      }, { status: 400 });
     }
 
     if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      return NextResponse.json({ success: false, error: 'Valid email is required' }, { status: 400 });
+      return NextResponse.json({
+        success: false,
+        error: 'Valid email is required',
+        requestId
+      }, { status: 400 });
     }
+
+    logStep(requestId, 'Creating Supabase client', 2);
 
     let paper: { title: string; content: string; authors: string[]; isFullText: boolean };
 
@@ -448,18 +464,73 @@ export async function POST(request: NextRequest) {
     const docxSignedUrl = await getSignedUrl(docxFileName, 172800);
 
     // Send email with download links
+    logStep(requestId, 'Sending email via Resend', 5);
     await sendDownloadEmail(email, paper.title, pptSignedUrl, docxSignedUrl);
+
+    // Log success
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      // Get user email for logging (we have it from request, but for completeness)
+      const completedAt = new Date();
+      await logGeneration(supabase, {
+        userId: email, // Using email as fallback user identifier
+        requestId,
+        service: 'journal-club-standalone',
+        mode: 'critical_appraisal',
+        inputType,
+        paperTitle: paper.title,
+        status: 'success',
+        emailSent: true,
+        pptUrl: pptSignedUrl,
+        wordUrl: docxSignedUrl,
+        completedAt,
+      }).catch(err => console.error('[Log] Failed to log success:', err));
+    }
 
     return NextResponse.json({
       success: true,
+      requestId,
       message: `Email sent to ${email}`,
       gammaMarkdown, // Include for debugging
     });
 
   } catch (error: unknown) {
-    console.error('[Generate] Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Generation failed';
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    console.error(`[${requestId}] Error:`, error);
+    const { code, message, stack } = categorizeError(error);
+
+    // Log failure
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      const body = await request.json().catch(() => ({}));
+      const email = (body as any).email || 'unknown@example.com';
+      const completedAt = new Date();
+      await logGeneration(supabase, {
+        userId: email,
+        requestId,
+        service: 'journal-club-standalone',
+        mode: 'critical_appraisal',
+        inputType,
+        paperTitle,
+        status: 'failed',
+        currentStep: 'unknown',
+        errorCode: code,
+        errorMessage: message,
+        errorStack: stack,
+        completedAt,
+      }).catch(err => console.error('[Log] Failed to log error:', err));
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: message,
+      requestId,
+      errorCode: code,
+      step: 'unknown'
+    }, { status: 500 });
   } finally {
     // Clean up uploaded PDF file after processing
     if (pdfFilePath) {
