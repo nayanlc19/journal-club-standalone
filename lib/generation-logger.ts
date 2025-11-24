@@ -16,6 +16,7 @@ export interface GenerationLogEntry {
   pptUrl?: string | null;
   wordUrl?: string | null;
   emailSent?: boolean;
+  startedAt?: Date;
   completedAt?: Date;
   metadata?: Record<string, any>;
 }
@@ -36,8 +37,8 @@ export async function logGeneration(
   supabase: SupabaseClient,
   entry: GenerationLogEntry
 ): Promise<void> {
-  const startedAt = new Date();
   const completedAt = entry.completedAt || new Date();
+  const startedAt = entry.startedAt || completedAt;
   const durationMs = Math.round(completedAt.getTime() - startedAt.getTime());
 
   try {

@@ -230,8 +230,8 @@ async function getSignedUrl(fileName: string, expiresIn: number = 172800): Promi
 }
 
 // Send email via Gmail SMTP
-async function sendDownloadEmail(email: string, paperTitle: string, pptUrl: string, docxUrl: string): Promise<void> {
-  await sendDownloadEmailGmail(email, paperTitle, pptUrl, docxUrl);
+async function sendDownloadEmail(email: string, paperTitle: string, pptUrl: string, docxUrl: string): Promise<boolean> {
+  return await sendDownloadEmailGmail(email, paperTitle, pptUrl, docxUrl);
 }
 
 // Call Gamma API to create presentation
@@ -415,8 +415,8 @@ export async function POST(request: NextRequest) {
     const docxSignedUrl = await getSignedUrl(docxFileName, 172800);
 
     // Send email with download links
-    logStep(requestId, 'Sending email via Resend', 5);
-    await sendDownloadEmail(email, paper.title, pptSignedUrl, docxSignedUrl);
+    logStep(requestId, 'Sending email via Gmail SMTP', 5);
+    const emailSent = await sendDownloadEmail(email, paper.title, pptSignedUrl, docxSignedUrl);
 
     // Log success
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -433,9 +433,10 @@ export async function POST(request: NextRequest) {
         inputType,
         paperTitle: paper.title,
         status: 'success',
-        emailSent: true,
+        emailSent,
         pptUrl: pptSignedUrl,
         wordUrl: docxSignedUrl,
+        startedAt: new Date(startTime),
         completedAt,
       }).catch(err => console.error('[Log] Failed to log success:', err));
     }
@@ -443,8 +444,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       requestId,
-      message: `Email sent to ${email}`,
-      gammaMarkdown, // Include for debugging
+      emailSent,
+      message: emailSent
+        ? `Email sent to ${email}`
+        : 'Presentation generated! Download using the links below.',
+      pptUrl: pptSignedUrl,
+      docxUrl: docxSignedUrl,
     });
 
   } catch (error: unknown) {
@@ -471,6 +476,7 @@ export async function POST(request: NextRequest) {
         errorCode: code,
         errorMessage: message,
         errorStack: stack,
+        startedAt: new Date(startTime),
         completedAt,
       }).catch(err => console.error('[Log] Failed to log error:', err));
     }

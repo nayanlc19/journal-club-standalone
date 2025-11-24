@@ -28,10 +28,10 @@ export async function sendDownloadEmailGmail(
   paperTitle: string,
   pptUrl: string | null,
   docxUrl: string | null
-): Promise<void> {
+): Promise<boolean> {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     console.log('[Email] No GMAIL credentials, skipping email');
-    return;
+    return false;
   }
 
   try {
@@ -93,8 +93,9 @@ export async function sendDownloadEmailGmail(
     });
 
     console.log(`[Email] Successfully sent to: ${email}`);
+    return true;
   } catch (error) {
     console.error('[Email] Send error:', error);
-    throw error;
+    return false;
   }
 }
