@@ -4,8 +4,8 @@ import { readFile, unlink, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import { generateRequestId, logGeneration, logStep, categorizeError } from '@/lib/generation-logger';
+import { sendDownloadEmailGmail } from '@/lib/sendEmailGmail';
 
 // Shared DOI regex pattern
 export const DOI_REGEX = /^10\.\d{4,}/;
@@ -229,58 +229,9 @@ async function getSignedUrl(fileName: string, expiresIn: number = 172800): Promi
   return data.signedUrl;
 }
 
-// Send email via Resend
+// Send email via Gmail SMTP
 async function sendDownloadEmail(email: string, paperTitle: string, pptUrl: string, docxUrl: string): Promise<void> {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (!resendApiKey) {
-    throw new Error('Resend API key not configured');
-  }
-
-  const resend = new Resend(resendApiKey);
-
-  const emailHtml = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #333;">Your Journal Club Documents are Ready!</h1>
-      <p style="color: #666; font-size: 16px;">
-        We've generated your critical appraisal documents for:
-      </p>
-      <p style="background: #f5f5f5; padding: 12px; border-left: 4px solid #0ea5e9; margin: 20px 0;">
-        <strong>${paperTitle}</strong>
-      </p>
-
-      <h2 style="color: #333; margin-top: 30px;">Download Your Documents:</h2>
-
-      <table style="width: 100%; margin: 20px 0;">
-        <tr>
-          <td style="padding: 12px;">
-            <a href="${pptUrl}" style="background: #0ea5e9; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              📊 Download PowerPoint
-            </a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding: 12px;">
-            <a href="${docxUrl}" style="background: #10b981; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              📄 Download Word Document
-            </a>
-          </td>
-        </tr>
-      </table>
-
-      <p style="color: #999; font-size: 12px; margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
-        <strong>Note:</strong> Download links expire after 48 hours. If you don't see this email in your inbox, check your spam folder.
-      </p>
-    </div>
-  `;
-
-  await resend.emails.send({
-    from: 'SmartDNBPrep <noreply@smartdnbprep.onrender.com>',
-    to: email,
-    subject: `Journal Club: ${paperTitle}`,
-    html: emailHtml,
-  });
-
-  console.log(`[Email] Sent to: ${email}`);
+  await sendDownloadEmailGmail(email, paperTitle, pptUrl, docxUrl);
 }
 
 // Call Gamma API to create presentation

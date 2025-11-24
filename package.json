@@ -15,6 +15,7 @@
     "groq-sdk": "^0.36.0",
     "happy-dom": "^20.0.10",
     "next": "16.0.3",
+    "nodemailer": "^7.0.10",
     "pdf-parse": "^2.4.5",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^7.0.4",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
