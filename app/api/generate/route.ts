@@ -274,7 +274,7 @@ async function sendDownloadEmail(email: string, paperTitle: string, pptUrl: stri
   `;
 
   await resend.emails.send({
-    from: 'SmartDNBPrep <noreply@smartdnbprep.com>',
+    from: 'SmartDNBPrep <noreply@smartdnbprep.onrender.com>',
     to: email,
     subject: `Journal Club: ${paperTitle}`,
     html: emailHtml,
